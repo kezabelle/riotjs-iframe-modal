@@ -1,0 +1,230 @@
+<iframe-modal onclick="{open}">
+    <yield />
+    <div class="modal" if="{isOpen}">
+        <div class="{overlay: true, finish: overlayLoaded}" onclick="{closeByOverlay}">
+            <span class="{progress: true, finish: iframeLoaded}" if="{!closing}">
+              <svg width="32px"  height="32px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid" style="background: rgba(0, 0, 0, 0) none repeat scroll 0% 0%;">
+                <circle cx="50" cy="50" fill="none"  stroke="#FFF" stroke-width="12" r="40" stroke-dasharray="188.49555921538757 64.83185307179586">
+                  <animateTransform attributeName="transform" type="rotate" calcMode="linear" values="0 50 50;360 50 50" keyTimes="0;1" dur="1s" begin="0s" repeatCount="indefinite"></animateTransform>
+                </circle>
+              </svg>
+            </span>
+        </div>
+        <div class="{header: true, finish: overlayLoaded}" onclick="{closeByOverlay}">
+            <span class="header-close" onclick="{closeByX}" if="{allowCloseByX}">&times;</span>
+        </div>
+        <div class="{content: true, finish: iframeLoaded}">
+            <iframe onload="{display}" class="{viewport: true, finish: iframeLoaded}" src="{opts.href}"></iframe>
+        </div>
+    </div>
+
+    <style type="text/css">
+    :scope .modal {
+
+    }
+    :scope .overlay {
+        width: 100%;
+        height: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 2000;
+        background-color: #303030;
+        overflow-y: hidden;
+        opacity: 0;
+        transition: opacity 350ms ease-in-out;
+        cursor: default;
+    }
+    :scope .overlay.finish {
+        opacity: 0.65;
+    }
+    :scope .progress {
+        margin-top: 0.118rem;
+        opacity: 1;
+        display: inline-block;
+        transition: opacity 350ms ease-in-out;
+        position: fixed;
+        top: calc(50% - 24px);
+        left: calc(50% - 24px);
+    }
+    :scope .progress.finish {
+        opacity: 0;
+    }
+    :scope .header {
+        height: 2rem;
+        position: fixed;
+        top: 0;
+        right: 0;
+        left: 0;
+        opacity: 0;
+        overflow: hidden;
+        background-color: #303030;
+        color: #FFF;
+        z-index: 2002;
+        transform: translate(0, -2rem);
+        transition: opacity 350ms ease-in-out, transform 200ms ease-in-out;
+        cursor: default;
+        text-align: center;
+    }
+    :scope .header.finish {
+        opacity: 0.9;
+        transform: translate(0, 0);
+    }
+    :scope .header-close {
+        font-size: 2rem;
+        line-height: 1.75rem;
+        display: inline-block;
+        float: right;
+        margin: 0 0.5rem 0 0;
+        cursor: pointer;
+        transition: transform 200ms ease-in-out;
+    }
+    :scope .header-close:hover {
+        transform: scale(1.5)
+    }
+    :scope .content {
+        cursor: default;
+        background-color: #FFF;
+        height: 100%;
+        max-height: 83%;
+        position: fixed;
+        top: calc(4% + 2rem);
+        left: 10%;
+        right: 10%;
+        -webkit-box-shadow: 0 1rem 2.500rem -1rem rgba(0,0,0,1);
+        -moz-box-shadow: 0 1rem 2.500rem -1rem rgba(0,0,0,1);
+        box-shadow: 0 1rem 2.500rem -1rem rgba(0,0,0,1);
+        z-index: 2001;
+        opacity: 0;
+        transform: translate(0, -100vh);
+        transition: all 350ms ease-in-out;
+
+    }
+    :scope .content.finish {
+        opacity: 1;
+        transform: translate(0, 0);
+    }
+
+    :scope iframe {
+        cursor: default;
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        max-height: 100%;
+        background-color: #FFF;
+        border: 1px solid #FFF;
+    }
+    </style>
+
+    <script>
+    this.opening = false;
+    this.closing = false;
+    this.isOpen = false;
+    this.overlayLoaded = false;
+    this.iframeLoaded = false;
+    this.allowCloseByOverlay = (this.opts.closeByOverlay !== void(0)) ?  this.opts.closeByOverlay : true;
+    this.allowCloseByX = (this.opts.closeByX !== void(0)) ?  this.opts.closeByX : true;
+    this.allowCloseByKeys = (Array.isArray(this.opts.closeByKeys) === true) ?  this.opts.closeByKeys : [27];
+
+    open(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.opening = true;
+        this.closing = false;
+        this.isOpen = true;
+        this.configureExternalListeners();
+
+        const that = this;
+        setTimeout(function() {
+            that.overlayLoaded = true;
+            that.update();
+        }, 16); // next frame, assuming we can manage 60FPS.
+    }
+    close(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.opening = false;
+        this.closing = true;
+        this.overlayLoaded = false;
+        this.iframeLoaded = false;
+        this.unconfigureExternalListeners();
+
+        const that = this;
+        setTimeout(function() {
+            that.isOpen = false;
+            that.update();
+        }, 350); // kill the whole DOM after the same duration as the animation.
+    }
+    closeByOverlay(event) {
+        if (this.allowCloseByOverlay) {
+            this.close(event);
+        } else {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }
+    closeByX(event) {
+        if (this.allowCloseByX) {
+            this.close(event);
+        } else {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }
+    closeByEscape(event) {
+        if (this.allowCloseByKeys.indexOf(event.which) > -1) {
+            this.close(event);
+            // have to call .update here because its not automatically called by being
+            // attached to the actual template onclick etc. and we want to
+            // animate the closing before the setTimeout of close() is executed.
+            this.update();
+        } else {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }
+
+    display(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.iframeLoaded = true;
+        this.opening = false;
+        this.closing = false;
+    }
+
+    postMessageListener(event) {
+        const data = event.data;
+        const _keys = Object.keys(data);
+        if (_keys.indexOf('iframe-modal') > -1 && data['iframe-modal'] === 'close' && this.isOpen == true) {
+            this.close(event);
+        }
+    }
+
+    configureExternalListeners() {
+        const doc = this.root.getRootNode();
+        const window = doc.defaultView || void(0);
+        if (window !== void(0)) {
+            window.addEventListener('message', this.postMessageListener, false);
+        }
+        if (doc !== void(0)) {
+            doc.addEventListener('keyup', this.closeByEscape, false);
+        }
+    }
+    unconfigureExternalListeners() {
+        const doc = this.root.getRootNode();
+        const window = doc.defaultView || void(0);
+        if (window !== void(0)) {
+            window.removeEventListener('message', this.postMessageListener, false);
+        }
+        if (doc !== void(0)) {
+            doc.removeEventListener('keyup', this.closeByEscape, false);
+        }
+    }
+
+    this.on('mount', function() {
+    });
+    this.on('unmount', function() {
+        this.unconfigureExternalListeners();
+    });
+    </script>
+</iframe-modal>
